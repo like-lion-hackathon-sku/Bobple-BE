@@ -24,8 +24,8 @@ export const createReview = async (req, res) => {
 
     // 기존 리뷰 확인 (userId UNIQUE)
     const existing = await prisma.reviews.findUnique({
-      where: { userId: targetUserId },
-      select: { id: true, userId: true, score: true, createdAt: true },
+      where: { user_id: targetUserId },
+      select: { id: true, user_id: true, score: true, createdAt: true },
     });
     if (existing) {
       return res
@@ -35,8 +35,8 @@ export const createReview = async (req, res) => {
 
     // 생성
     const review = await prisma.reviews.create({
-      data: { userId: targetUserId, score },
-      select: { id: true, userId: true, score: true, createdAt: true },
+      data: { user_id: targetUserId, score },
+      select: { id: true, user_id: true, score: true, createdAt: true },
     });
 
     return res.status(201).json(review);
@@ -65,8 +65,8 @@ export const getReview = async (req, res) => {
     }
 
     const review = await prisma.reviews.findUnique({
-      where: { userId: targetUserId },
-      select: { id: true, userId: true, score: true, createdAt: true },
+      where: { user_id: targetUserId },
+      select: { id: true, user_id: true, score: true, createdAt: true },
     });
 
     if (!review) {

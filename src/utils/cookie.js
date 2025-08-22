@@ -8,20 +8,24 @@
  * @param {String} refreshToken - [리프레시 토큰]
  */
 export const setTokenCookies = (res, accessToken, refreshToken) => {
-  // 🍪 엑세스 토큰을 쿠키로 저장(Http-only)
-  res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: process.env.SERVER_ENV === "production",
-    sameSite: process.env.SERVER_ENV === "production" ? "none" : "lax",
-    maxAge: 1000 * 60 * 10,
-  });
-  // 🍪 리프레시 토큰을 쿠키로 저장(Http-only)
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.SERVER_ENV === "production",
-    sameSite: process.env.SERVER_ENV === "production" ? "none" : "lax",
-    maxAge: 1000 * 60 * 60 * 24 * 7,
-  });
+  if (accessToken) {
+    // 🍪 엑세스 토큰을 쿠키로 저장(Http-only)
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.SERVER_ENV === "production",
+      sameSite: process.env.SERVER_ENV === "production" ? "none" : "lax",
+      maxAge: 1000 * 60 * 10,
+    });
+  }
+  if (refreshToken) {
+    // 🍪 리프레시 토큰을 쿠키로 저장(Http-only)
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.SERVER_ENV === "production",
+      sameSite: process.env.SERVER_ENV === "production" ? "none" : "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    });
+  }
 };
 /**
  * **[Cookie]**

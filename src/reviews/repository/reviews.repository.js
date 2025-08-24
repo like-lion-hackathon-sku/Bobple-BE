@@ -1,18 +1,25 @@
-// src/reviews/repository/reviews.repository.js
 import { prisma } from "../../db.config.js";
 
-const baseSelect = { id: true, userId: true, score: true, createdAt: true };
+// (선택) 피평가자 존재 확인
+export const findUserByIdRepo = (id) =>
+  prisma.users.findUnique({ where: { id }, select: { id: true } });
 
-export const findByUserId = async (userId) => {
-  return prisma.reviews.findUnique({
+// 리뷰 생성 (score만 저장)
+export const createReviewRepo = (data) =>
+  prisma.reviews.create({
+    data: {
+      userId: data.revieweeId,
+      score: data.score,
+    },
+    select: { id: true, userId: true, score: true, createdAt: true },
+  });
+
+// 받은 리뷰 목록 (최신순, take/skip)
+export const listReceivedReviewsRepo = ({ userId, take, skip }) =>
+  prisma.reviews.findMany({
     where: { userId },
-    select: baseSelect,
+    orderBy: { createdAt: "desc" },
+    take,
+    skip,
+    select: { id: true, userId: true, score: true, createdAt: true },
   });
-};
-
-export const create = async ({ userId, score }) => {
-  return prisma.reviews.create({
-    data: { userId, score },
-    select: baseSelect,
-  });
-};

@@ -1,49 +1,49 @@
-// 요청 값(파라미터/쿼리/바디)을 안전하게 검증/정규화하는 유틸리티들입니다.
-// 실패 시 { status, message } 형태의 에러를 던집니다.
+/** 공통 유틸 */
+const toInt = (v) => {
+  const n = Number(v);
+  return Number.isInteger(n) ? n : NaN;
+};
 
-const toInt = (v) => Number(v);
-const isPosInt = (n) => Number.isInteger(n) && n >= 1;
+/** POST 바디 → 서비스 입력
+ *  인증을 사용하지 않으므로 body에서 creatorId, content를 받음
+ *  params에서 eventId를 받음
+ */
+export const bodyToCreateComment = (req) => {
+  const eventId = toInt(req.params?.eventId);
+  const creatorId = toInt(req.body?.creatorId);
+  const content = String(req.body?.content ?? "").trim();
 
-const badReq = (msg) => Object.assign(new Error(msg), { status: 400 });
-const unauthorized = (msg = "unauthorized") =>
-  Object.assign(new Error(msg), { status: 401 });
+  if (!Number.isInteger(eventId) || eventId < 1)
+    throw new Error("invalid eventId");
+  if (!Number.isInteger(creatorId) || creatorId < 1)
+    throw new Error("invalid creatorId");
+  if (!content) throw new Error("content is required");
+  if (content.length > 1000) throw new Error("content must be <= 1000 chars");
 
-/** 댓글 생성: path:eventId, userId, body:content */
-export function validateCreateComment({ eventId, userId, content }) {
-  const eid = toInt(eventId);
-  const uid = toInt(userId);
-  const text = String(content ?? "").trim();
+  return { eventId, creatorId, content };
+};
 
-  if (!isPosInt(eid)) throw badReq("invalid eventId");
-  if (!uid) throw unauthorized();
-  if (!text) throw badReq("content is required");
-  if (text.length > 1000) throw badReq("content must be <= 1000 chars");
+/** GET 쿼리 → 서비스 입력 (페이지네이션 기본값 page=1,size=10) */
+export const queryToListComments = (req) => {
+  const eventId = toInt(req.params?.eventId);
+  if (!Number.isInteger(eventId) || eventId < 1)
+    throw new Error("invalid eventId");
 
-  return { eventId: eid, userId: uid, content: text };
-}
+  const page = Math.max(1, toInt(req.query?.page) || 1);
+  const size = Math.max(1, Math.min(50, toInt(req.query?.size) || 10));
 
-/** 목록 조회: path:eventId, query:page,limit */
-export function validateListComments({ eventId, page = 1, limit = 20 }) {
-  const eid = toInt(eventId);
-  if (!isPosInt(eid)) throw badReq("invalid eventId");
+  return { eventId, page, size };
+};
 
-  const pg = Math.max(1, toInt(page));
-  let lim = toInt(limit);
-  lim = Math.min(100, Math.max(1, lim));
+/** DELETE 파라미터 → 서비스 입력 */
+export const paramsToDeleteComment = (req) => {
+  const eventId = toInt(req.params?.eventId);
+  const commentId = toInt(req.params?.commentId);
 
-  const skip = (pg - 1) * lim;
-  return { eventId: eid, page: pg, limit: lim, skip };
-}
+  if (!Number.isInteger(eventId) || eventId < 1)
+    throw new Error("invalid eventId");
+  if (!Number.isInteger(commentId) || commentId < 1)
+    throw new Error("invalid commentId");
 
-/** 삭제: path:eventId,commentId, userId */
-export function validateDeleteComment({ eventId, commentId, userId }) {
-  const eid = toInt(eventId);
-  const cid = toInt(commentId);
-  const uid = toInt(userId);
-
-  if (!uid) throw unauthorized();
-  if (!isPosInt(eid)) throw badReq("invalid eventId");
-  if (!isPosInt(cid)) throw badReq("invalid commentId");
-
-  return { eventId: eid, commentId: cid, userId: uid };
-}
+  return { eventId, commentId };
+};

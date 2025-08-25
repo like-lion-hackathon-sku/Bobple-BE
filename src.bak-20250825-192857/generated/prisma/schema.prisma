@@ -1,0 +1,133 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  Male
+  Female
+  None
+}
+
+model Users {
+  id          Int       @id @default(autoincrement())
+  email       String    @unique(map: "email") @db.VarChar(40)
+  uid         String    @unique(map: "uid") @db.VarChar(300)
+  nickname    String?   @unique(map: "nickname") @db.VarChar(10)
+  grade       Int?
+  gender      Gender?
+  profileImg  String?   @map("profile_img") @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime? @updatedAt @map("updated_at")
+  isCompleted Boolean   @default(false) @map("is_completed")
+
+  events            Events[]
+  chats             Chats[]
+  comments          Comments[]
+  reviews           Reviews[]
+  eventApplications EventApplications[]
+
+  @@map("users")
+}
+
+model RefreshTokens {
+  id        Int      @id @default(autoincrement())
+  token     String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+}
+
+model Events {
+  id           Int         @id @default(autoincrement())
+  users        Users       @relation(fields: [creatorId], references: [id])
+  creatorId    Int         @unique @map("creator_id")
+  title        String      @db.VarChar(100)
+  content      String      @db.Text
+  restaurants  Restaurants @relation(fields: [restaurantId], references: [id])
+  restaurantId Int         @map("restaurant_id")
+  startAt      DateTime    @map("start_at")
+  endAt        DateTime    @map("end_at")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  eventApplications EventApplications[]
+  chats             Chats[]
+  comments          Comments[]
+
+  @@map("events")
+}
+
+enum FoodType {
+  Korean
+  Japanese
+  Chinese
+}
+
+model Restaurants {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  category    FoodType
+  address     String   @db.Text
+  telephone   String   @unique @db.VarChar(11)
+  mapx        Int
+  mapy        Int
+  isSponsored Boolean  @map("is_sponsored")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  events      Events[]
+
+  @@map("restaurants")
+}
+
+model EventApplications {
+  id        Int      @id @default(autoincrement())
+  events    Events   @relation(fields: [eventId], references: [id])
+  eventId   Int      @map("event_id")
+  users     Users    @relation(fields: [creatorId], references: [id])
+  creatorId Int      @map("creator_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("event_applications")
+}
+
+model Comments {
+  id        Int      @id @default(autoincrement())
+  events    Events   @relation(fields: [eventId], references: [id])
+  eventId   Int      @map("event_id")
+  users     Users    @relation(fields: [creatorId], references: [id])
+  creatorId Int      @map("creator_id")
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("comments")
+}
+
+model Reviews {
+  id        Int      @id @default(autoincrement())
+  users     Users    @relation(fields: [userId], references: [id])
+  userId    Int      @map("user_id")
+  score     Float
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("reviews")
+}
+
+model Chats {
+  id        Int      @id @default(autoincrement())
+  events    Events   @relation(fields: [eventId], references: [id])
+  eventId   Int      @map("event_id")
+  users     Users    @relation(fields: [userId], references: [id])
+  userId    Int      @map("user_id")
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+}

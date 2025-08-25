@@ -1,84 +1,63 @@
-// src/reviews/controller/reviews.controller.js
-import { prisma } from "../../db.config.js";
+import {
+  bodyToCreateReview,
+  validateCreateReview,
+  queryToListOptions,
+} from "../dto/request/reviews.request.dto.js";
+import {
+  createReviewSvc,
+  listReviewsOfUserSvc,
+} from "../service/reviews.service.js";
+import {
+  createReviewResponse,
+  listReviewsResponse,
+} from "../dto/response/reviews.response.dto.js";
 
-/**
- * POST /api/reviews/:userId
- * body: { score: number(1..5) }
- * 등록만 허용, 기존 리뷰가 있으면 409 Conflict (갱신 X)
- * ※ 인증 미사용 버전: req.user 사용 안 함
- */
+// POST /api/reviews/:userId  (익명 리뷰 작성: score만 저장)
 export const createReview = async (req, res) => {
   try {
-    const targetUserId = Number(req.params.userId);
-    const score = Number(req.body?.score);
+    const dto = bodyToCreateReview(req);
+    const err = validateCreateReview(dto);
+    if (err) return res.status(400).json({ message: err });
 
-    // userId 유효성
-    if (!Number.isInteger(targetUserId) || targetUserId < 1) {
-      return res.status(400).json({ message: "invalid userId" });
-    }
-
-    // score 유효성
-    if (!Number.isFinite(score) || score < 1 || score > 5) {
-      return res.status(400).json({ message: "score must be between 1 and 5" });
-    }
-
-    // 기존 리뷰 확인 (userId UNIQUE)
-    const existing = await prisma.reviews.findUnique({
-      where: { userId: targetUserId },
-      select: { id: true, userId: true, score: true, createdAt: true },
-    });
-    if (existing) {
-      return res
-        .status(409)
-        .json({ message: "review already exists", review: existing });
-    }
-
-    // 생성
-    const review = await prisma.reviews.create({
-      data: { userId: targetUserId, score },
-      select: { id: true, userId: true, score: true, createdAt: true },
-    });
-
-    return res.status(201).json(review);
-  } catch (err) {
-    // UNIQUE 충돌(동시성)
-    if (err?.code === "P2002" && err?.meta?.target?.includes("user_id")) {
-      return res.status(409).json({ message: "review already exists" });
-    }
-    console.error("[createReview]", err);
-    return res.status(500).json({ message: "internal error" });
+    const created = await createReviewSvc(dto);
+    return res.status(201).json(createReviewResponse(created));
+  } catch (e) {
+    console.error(e);
+    const code = e.status ?? 500;
+    return res.status(code).json({ message: e.message ?? "internal error" });
   }
 };
 
-/**
- * GET /api/reviews/:userId
- * 모델 특성상 userId UNIQUE → 평균 = 저장된 점수
- * ※ 인증 미사용 버전: req.user 사용 안 함
- */
-export const getReview = async (req, res) => {
+// GET /api/reviews/:userId  (해당 유저가 받은 리뷰 — 기본 2개)
+export const listReviewsOfUser = async (req, res) => {
   try {
-    const targetUserId = Number(req.params.userId);
-
-    // userId 유효성
-    if (!Number.isInteger(targetUserId) || targetUserId < 1) {
+    const userId = Number(req.params.userId);
+    const { take, page } = queryToListOptions(req); // 기본 take=2
+    if (!Number.isInteger(userId) || userId < 1)
       return res.status(400).json({ message: "invalid userId" });
-    }
 
-    const review = await prisma.reviews.findUnique({
-      where: { userId: targetUserId },
-      select: { id: true, userId: true, score: true, createdAt: true },
-    });
-
-    if (!review) {
-      return res.status(404).json({ message: "review not found" });
-    }
-
-    return res.json({
-      average: review.score,
-      review, // { id, userId, score, createdAt }
-    });
-  } catch (err) {
-    console.error("[getReview]", err);
+    const result = await listReviewsOfUserSvc({ userId, take, page });
+    return res.status(200).json(listReviewsResponse(result));
+  } catch (e) {
+    console.error(e);
     return res.status(500).json({ message: "internal error" });
   }
 };
+
+// GET /api/reviews/me  (로그인한 내가 받은 리뷰 — 기본 2개)
+/* export const listMyReceivedReviews = async (req, res) => {
+  try {
+    const fallbackId = Number(process.env.AUTH_DISABLED_USER_ID ?? 1);
+    const userId = fallbackId;
+    const { take, page } = queryToListOptions(req); // 기본 take=2
+    if (!Number.isInteger(userId) || userId < 1)
+      return res.status(400).json({ message: "invalid userId(for /me)" });
+
+    const result = await listReviewsOfUserSvc({ userId, take, page });
+    return res.status(200).json(listReviewsResponse(result));
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "internal error" });
+  }
+};
+*/

@@ -1,28 +1,16 @@
-// src/reviews/dto/reviews.response.dto.js
+// DB → API 응답 매핑 (별점/날짜만 전달)
 
-/**
- * DB Review -> API Review
- */
-export const mapReview = (r) => {
-  if (!r) return null;
-  return {
-    id: r.id,
-    userId: r.userId,
-    score: r.score,
-    createdAt: r.createdAt,
-  };
-};
+export const mapReviewItem = (r) => ({
+  id: r.id,
+  userId: r.userId, // 리뷰를 받은 유저 ID
+  score: r.score, // 0~5 (프론트에서 별 렌더)
+  createdAt: r.createdAt, // 날짜 포맷은 프론트에서
+});
 
-/**
- * POST /api/reviews/:userId 결과
- */
-export const createReviewResponse = (review) => mapReview(review);
+export const createReviewResponse = (r) => mapReviewItem(r);
 
-/**
- * GET /api/reviews/:userId 결과
- * 모델 특성상 average === review.score
- */
-export const getReviewResponse = (review) => {
-  if (!review) return { average: null, review: null };
-  return { average: review.score, review: mapReview(review) };
-};
+// 평균/개수 없이, 항목만
+export const listReviewsResponse = ({ items, pagination }) => ({
+  items: items.map(mapReviewItem),
+  pagination, // 필요 없으면 라우터에서 무시 가능
+});

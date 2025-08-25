@@ -1,19 +1,10 @@
 import { InvalidInputValueError } from "../../error.js";
 import { clearTokenCookies, setTokenCookies } from "../../utils/cookie.js";
-import { imageToDataURL } from "../../utils/files.js";
-import { compressProfileImage } from "../../utils/sharp.js";
 import {
   loginRequestDto,
   logoutRequestDto,
-  refreshRequestDto,
-  updateProfileRequestDto,
 } from "../dto/request/auth.request.dto.js";
-import {
-  logout,
-  refresh,
-  verifyIdToken,
-  updateProfile,
-} from "../service/auth.service.js";
+import { logout, verifyIdToken } from "../service/auth.service.js";
 import { StatusCodes } from "http-status-codes";
 
 export const handleLogin = async (req, res, next) => {
@@ -51,56 +42,4 @@ export const handleLogout = async (req, res, next) => {
   await logout(logoutRequestDto(req.cookies));
   clearTokenCookies(res);
   res.status(StatusCodes.OK).success(null);
-};
-export const handleRefresh = async (req, res, next) => {
-  /*
-    #swagger.summary = "토큰 리프레시"
-    #swagger.tags = ['Auth']
-  */
-  const results = await refresh(refreshRequestDto(req.cookies));
-  setTokenCookies(res, results.accessToken, null);
-  res.status(StatusCodes.OK).success(results.user);
-};
-export const handleUpdateProfile = async (req, res, next) => {
-  /*
-    #swagger.summary = "프로필 설정"
-    #swagger.description = "프로필을 설정 / 수정 합니다."
-    #swagger.requestBody = {
-      required: true,
-      content: {
-        "multipart/form-data":{
-          schema:{
-            type: "object",
-            properties: {
-              profileImage: {
-                type:"string",
-                format:"binary"
-              },
-              nickname :{
-                type:"string",
-                example:"호시",
-              },
-              grade: {
-                type:"number",
-                example: 2,
-              },
-              gender: {
-                type:"string",
-                example: "Male"
-              }
-            }
-          }
-        }
-      }
-    }
-  */
-  console.log(req.payload);
-  req.file =
-    req.file !== undefined
-      ? imageToDataURL(await compressProfileImage(req.file))
-      : null;
-  const updatedProfile = await updateProfile(
-    updateProfileRequestDto(req.body, req.file, req.payload),
-  );
-  res.status(StatusCodes.OK).success(updatedProfile);
 };

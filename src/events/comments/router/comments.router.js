@@ -7,14 +7,18 @@ import {
 
 const router = express.Router({ mergeParams: true });
 
-// POST /api/events/:eventId/comments
+// POST   /api/events/:eventId/comments
 router.post(
   "/",
   /*
     #swagger.tags = ['Comments']
     #swagger.summary = '댓글 작성'
     #swagger.parameters['eventId'] = {
-      in: 'path', required: true, schema: { type: 'integer' }, description: '이벤트 ID', example: 1
+      in: 'path',
+      required: true,
+      schema: { type: 'integer' },
+      description: '이벤트 ID',
+      example: 1
     }
     #swagger.requestBody = {
       required: true,
@@ -22,64 +26,52 @@ router.post(
         "application/json": {
           schema: {
             type: 'object',
-            required: ['content'],
-            properties: { content: { type: 'string', example: '밥약 신청합니다!', minLength: 1 } }
-          }
-        }
-      }
-    }
-    #swagger.responses[201] = { description: '생성 성공' }
-    #swagger.responses[400] = { description: '잘못된 eventId/content' }
-    #swagger.responses[500] = { description: '서버 에러' }
-  */
-  createComment
-);
-
-// GET /api/events/:eventId/comments
-router.get(
-  "/",
-  /*
-    #swagger.tags = ['Comments']
-    #swagger.summary = '댓글 리스트 조회'
-    #swagger.parameters['eventId'] = {
-      in: 'path', required: true, schema: { type: 'integer' }, description: '이벤트 ID', example: 1
-    }
-    #swagger.parameters['page'] = {
-      in: 'query', required: false, schema: { type: 'integer', default: 1, minimum: 1 }, description: '페이지(>=1)'
-    }
-    #swagger.parameters['limit'] = {
-      in: 'query', required: false, schema: { type: 'integer', default: 20, minimum: 1, maximum: 100 }, description: '페이지당 개수(1~100)'
-    }
-    #swagger.responses[200] = {
-      description: '조회 성공',
-      content: {
-        "application/json": {
-          schema: {
-            type: 'object',
+            required: ['creatorId', 'content'],
             properties: {
-              page: { type: 'integer', example: 1 },
-              limit: { type: 'integer', example: 20 },
-              total: { type: 'integer', example: 3 },
-              items: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'integer' },
-                    eventId: { type: 'integer' },
-                    creatorId: { type: 'integer' },
-                    content: { type: 'string' },
-                    createdAt: { type: 'string', format: 'date-time' }
-                  }
-                }
-              }
+              creatorId: { type: 'integer', example: 2, description: '작성자(유저) ID' },
+              content: { type: 'string', example: '저도 같이 가고 싶습니다!' }
             }
           }
         }
       }
     }
-    #swagger.responses[400] = { description: '잘못된 eventId' }
-    #swagger.responses[500] = { description: '서버 에러' }
+    #swagger.responses[201] = {
+      description: '댓글 작성 성공',
+      content: { "application/json": { } }
+    }
+  */
+  createComment
+);
+
+// GET    /api/events/:eventId/comments
+router.get(
+  "/",
+  /*
+    #swagger.tags = ['Comments']
+    #swagger.summary = '댓글 리스트 가져오기'
+    #swagger.parameters['eventId'] = {
+      in: 'path',
+      required: true,
+      schema: { type: 'integer' },
+      description: '이벤트 ID',
+      example: 1
+    }
+    #swagger.parameters['page'] = {
+      in: 'query',
+      required: false,
+      schema: { type: 'integer', default: 1 },
+      description: '페이지 번호'
+    }
+    #swagger.parameters['size'] = {
+      in: 'query',
+      required: false,
+      schema: { type: 'integer', default: 10 },
+      description: '페이지 크기'
+    }
+    #swagger.responses[200] = {
+      description: '댓글 목록 조회 성공',
+      content: { "application/json": { } }
+    }
   */
   listComments
 );
@@ -91,15 +83,26 @@ router.delete(
     #swagger.tags = ['Comments']
     #swagger.summary = '댓글 삭제'
     #swagger.parameters['eventId'] = {
-      in: 'path', required: true, schema: { type: 'integer' }, description: '이벤트 ID', example: 1
+      in: 'path',
+      required: true,
+      schema: { type: 'integer' },
+      description: '이벤트 ID',
+      example: 1
     }
     #swagger.parameters['commentId'] = {
-      in: 'path', required: true, schema: { type: 'integer' }, description: '댓글 ID', example: 10
+      in: 'path',
+      required: true,
+      schema: { type: 'integer' },
+      description: '댓글 ID',
+      example: 3
     }
-    #swagger.responses[204] = { description: '삭제 성공(본문 없음)' }
-    #swagger.responses[400] = { description: '잘못된 eventId/commentId' }
-    #swagger.responses[404] = { description: '댓글 없음' }
-    #swagger.responses[500] = { description: '서버 에러' }
+    #swagger.responses[200] = {
+      description: '댓글 삭제 성공',
+      content: { "application/json": { } }
+    }
+    #swagger.responses[404] = {
+      description: '해당 댓글을 찾을 수 없음'
+    }
   */
   deleteComment
 );

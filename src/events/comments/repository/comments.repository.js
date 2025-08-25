@@ -20,7 +20,7 @@ export const listCommentsRepo = async ({ eventId, page, size }) => {
     skip,
     take: size,
     include: {
-      users: { select: { id: true, nickname: true, profile_img: true } },
+      users: { select: { id: true, nickname: true, profileImg: true } },
     },
   });
 };
@@ -34,6 +34,7 @@ export const countCommentsRepo = async ({ eventId }) => {
 export const findCommentByIdRepo = async (commentId) => {
   return await prisma.comments.findUnique({
     where: { id: commentId },
+    select: { id: true, eventId: true },
   });
 };
 

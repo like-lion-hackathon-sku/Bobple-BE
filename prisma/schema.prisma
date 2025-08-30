@@ -1,3 +1,4 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -5,51 +6,51 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL") // .env에 DATABASE_URL 있어야 합니다
 }
 
 model Users {
-  id                Int                 @id @default(autoincrement())
-  email             String              @unique(map: "email") @db.VarChar(40)
-  uid               String              @unique(map: "uid") @db.VarChar(300)
-  nickname          String?             @unique(map: "nickname") @db.VarChar(10)
-  grade             Int?
-  gender            Gender?
-  profileImg        String?             @map("profile_img")
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime?           @updatedAt @map("updated_at")
-  isCompleted       Boolean             @default(false) @map("is_completed")
+  id          Int       @id @default(autoincrement())
+  email       String    @unique(map: "email") @db.VarChar(40)
+  uid         String    @unique(map: "uid") @db.VarChar(300)
+  nickname    String?   @unique(map: "nickname") @db.VarChar(10)
+  grade       Int?
+  gender      Gender?
+  profileImg  String?   @map("profile_img")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime? @updatedAt @map("updated_at")
+  isCompleted Boolean   @default(false) @map("is_completed")
+
   chats             Chats[]
   comments          Comments[]
   eventApplications EventApplications[]
-  events            Events?
-  reviews           Reviews[]
+  events            Events[] // 1:N
+
+  reviews Reviews[]
 
   @@map("users")
 }
 
-model RefreshTokens {
-  id        Int      @id @default(autoincrement())
-  token     String
-  createdAt DateTime @default(now()) @map("created_at")
-}
-
 model Events {
-  id                Int                 @id @default(autoincrement())
-  creatorId         Int                 @unique @map("creator_id")
-  title             String              @db.VarChar(100)
-  content           String
-  restaurantId      Int                 @map("restaurant_id")
-  startAt           DateTime            @map("start_at")
-  endAt             DateTime            @map("end_at")
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
+  id           Int      @id @default(autoincrement())
+  creatorId    Int      @map("creator_id") // @unique 제거(여러 개 작성 가능)
+  title        String   @db.VarChar(100)
+  content      String
+  restaurantId Int      @map("restaurant_id")
+  startAt      DateTime @map("start_at")
+  endAt        DateTime @map("end_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
   chats             Chats[]
   comments          Comments[]
   eventApplications EventApplications[]
-  users             Users               @relation(fields: [creatorId], references: [id])
-  restaurants       Restaurants         @relation(fields: [restaurantId], references: [id])
 
+  users       Users       @relation(fields: [creatorId], references: [id])
+  restaurants Restaurants @relation(fields: [restaurantId], references: [id])
+
+  @@index([creatorId])
+  @@index([restaurantId])
   @@map("events")
 }
 
@@ -58,13 +59,14 @@ model Restaurants {
   name        String   @db.VarChar(100)
   category    FoodType
   address     String
-  telephone   String   @unique @db.VarChar(11)
+  telephone   String   @unique @db.VarChar(20)
   mapx        Int
   mapy        Int
   isSponsored Boolean  @map("is_sponsored")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-  events      Events[]
+
+  events Events[]
 
   @@map("restaurants")
 }
@@ -74,9 +76,13 @@ model EventApplications {
   eventId   Int      @map("event_id")
   creatorId Int      @map("creator_id")
   createdAt DateTime @default(now()) @map("created_at")
-  users     Users    @relation(fields: [creatorId], references: [id])
-  events    Events   @relation(fields: [eventId], references: [id])
 
+  users  Users  @relation(fields: [creatorId], references: [id])
+  events Events @relation(fields: [eventId], references: [id], onDelete: Cascade) // CASCADE
+
+  @@unique([eventId, creatorId]) // 중복 신청 방지
+  @@index([eventId])
+  @@index([creatorId])
   @@map("event_applications")
 }
 
@@ -86,20 +92,13 @@ model Comments {
   creatorId Int      @map("creator_id")
   content   String
   createdAt DateTime @default(now()) @map("created_at")
-  users     Users    @relation(fields: [creatorId], references: [id])
-  events    Events   @relation(fields: [eventId], references: [id])
 
+  users  Users  @relation(fields: [creatorId], references: [id])
+  events Events @relation(fields: [eventId], references: [id], onDelete: Cascade) // CASCADE
+
+  @@index([eventId])
+  @@index([creatorId])
   @@map("comments")
-}
-
-model Reviews {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @map("user_id")
-  score     Float
-  createdAt DateTime @default(now()) @map("created_at")
-  users     Users    @relation(fields: [userId], references: [id])
-
-  @@map("reviews")
 }
 
 model Chats {
@@ -108,8 +107,24 @@ model Chats {
   userId    Int      @map("user_id")
   content   String
   createdAt DateTime @default(now()) @map("created_at")
-  events    Events   @relation(fields: [eventId], references: [id])
-  users     Users    @relation(fields: [userId], references: [id])
+
+  events Events @relation(fields: [eventId], references: [id], onDelete: Cascade) // CASCADE
+  users  Users  @relation(fields: [userId], references: [id])
+
+  @@index([eventId])
+  @@index([userId])
+}
+
+model Reviews {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  score     Float
+  createdAt DateTime @default(now()) @map("created_at")
+
+  users Users @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("reviews")
 }
 
 enum Gender {

@@ -12,21 +12,6 @@ const toPosInt = (v, def = 0) => {
   return Number.isInteger(n) && n >= 0 ? n : def;
 };
 
-/** 내부 공통: 이벤트 + 작성자 id 조회 */
-async function getEventOwner(tx, id) {
-  // 스키마에 따라 creatorId 또는 userId/authorId 등일 수 있어 넓게 대응
-  const row = await tx.events.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      creatorId: true,
-      userId: true,
-      authorId: true,
-    },
-  });
-  return row ? (row.creatorId ?? row.userId ?? row.authorId ?? null) : null;
-}
-
 /** 목록 조회 (페이지네이션, 최신순) */
 export async function findMany(skip = 0, take = 12) {
   const _skip = toPosInt(skip, 0);
@@ -37,7 +22,7 @@ export async function findMany(skip = 0, take = 12) {
     take: _take,
     orderBy: { createdAt: "desc" },
     include: {
-      // ⚠️ 현재 스키마: Events.users / Events.restaurants
+      // ⚠️ 스키마: Events.users / Events.restaurants
       users: { select: { id: true, nickname: true } },
       restaurants: { select: { id: true, name: true } },
       _count: { select: { eventApplications: true } },
@@ -88,74 +73,26 @@ export async function findByIdWithParticipants(eventId) {
   return row ? toDetailDTO(row) : null;
 }
 
-/** 수정(작성자 권한) */
-export async function updateById(eventId, data, user) {
+/** 수정 */
+export function updateById(eventId, data) {
   const id = Number(eventId);
   if (!Number.isInteger(id) || id <= 0) {
     const e = new Error("Invalid eventId");
     e.status = 400;
     throw e;
   }
-  if (!user?.id) {
-    const e = new Error("UNAUTHORIZED");
-    e.status = 401;
-    throw e;
-  }
-
-  return await prisma.$transaction(async (tx) => {
-    const ownerId = await getEventOwner(tx, id);
-    if (ownerId == null) {
-      const e = new Error("NOT_FOUND");
-      e.status = 404;
-      throw e;
-    }
-    if (ownerId !== user.id) {
-      const e = new Error("FORBIDDEN");
-      e.status = 403;
-      throw e;
-    }
-
-    const updated = await tx.events.update({ where: { id }, data });
-    // 수정 후 목록 DTO 형태로 반환해도 되고, 상세 DTO로 반환해도 됨.
-    // 서비스에서 normalize하므로 원본 그대로 반환해도 OK
-    return updated;
-  });
+  return prisma.events.update({ where: { id }, data });
 }
 
-/** 삭제(작성자 권한) — 댓글/신청 먼저 삭제 후 이벤트 삭제 */
-export async function deleteById(eventId, user) {
+/** 삭제 */
+export function deleteById(eventId) {
   const id = Number(eventId);
   if (!Number.isInteger(id) || id <= 0) {
     const e = new Error("Invalid eventId");
     e.status = 400;
     throw e;
   }
-  if (!user?.id) {
-    const e = new Error("UNAUTHORIZED");
-    e.status = 401;
-    throw e;
-  }
-
-  return await prisma.$transaction(async (tx) => {
-    const ownerId = await getEventOwner(tx, id);
-    if (ownerId == null) {
-      const e = new Error("NOT_FOUND");
-      e.status = 404;
-      throw e;
-    }
-    if (ownerId !== user.id) {
-      const e = new Error("FORBIDDEN");
-      e.status = 403;
-      throw e;
-    }
-
-    // 자식 먼저 정리 (DB FK가 ON DELETE CASCADE면 이 블록은 생략 가능)
-    await tx.comments.deleteMany({ where: { eventId: id } });
-    await tx.eventApplications.deleteMany({ where: { eventId: id } });
-
-    await tx.events.delete({ where: { id } });
-    return { deleted: 1 };
-  });
+  return prisma.events.delete({ where: { id } });
 }
 
 /* ========= DTO ========= */
@@ -164,8 +101,8 @@ function toListItemDTO(e) {
   return {
     id: e.id,
     title: e.title,
-    content: e.content ?? null,
-    startAt: e.startAt,
+    content: e.content,
+    startAt: e.startAt, // Prisma 필드명을 그대로 사용 (camelCase)
     endAt: e.endAt,
     chatUrl: `/chats/event/${e.id}`,
     participantsCount: e._count?.eventApplications ?? 0,

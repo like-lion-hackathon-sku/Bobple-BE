@@ -288,7 +288,6 @@ r.delete(
             });
       }
 
-      // 이벤트 작성자 여부 확인 (findById가 없을 수도 있어 안전 폴백)
       const ev =
         typeof eventRepo.findById === "function"
           ? await eventRepo.findById(eventId)

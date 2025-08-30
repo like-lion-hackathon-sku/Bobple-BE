@@ -78,7 +78,6 @@ export const applyApplication = async (req, res, next) => {
 };
 
 // ───────── 신청 취소 ─────────
-// ───────── 신청 취소 ─────────
 export const cancelApplication = async (req, res, next) => {
   try {
     const eventId = parseId(req.params.eventId, "event_id");

@@ -1,5 +1,6 @@
 // src/events/router/events.router.js
 import { Router } from "express";
+import { myApplications } from "..//application/controller/application.controller.js";
 
 // 하위 라우터 (절대경로 금지: 내부에서 '/' 기준으로만 정의)
 import eventRouter from "../event/router/event.router.js"; // GET /, GET/PUT/DELETE /:eventId
@@ -9,6 +10,34 @@ import restaurantsRouter from "../../restaurants/router/restaurants.router.js";
 import commentsRouter from "../comments/router/comments.router.js";
 
 const r = Router();
+
+let _authFn = null;
+async function authMw(req, res, next) {
+  try {
+    // 개발 우회
+    if (
+      process.env.SKIP_AUTH === "1" &&
+      process.env.NODE_ENV !== "production"
+    ) {
+      req.user = { id: 1, isCompleted: true, nickname: "tester1" };
+      return next();
+    }
+    // 실제 인증 미들웨어 동적 로딩
+    if (!_authFn) {
+      const mod = await import("../../auth/middleware/auth.middleware.js");
+      const base = mod.authenticateAccessToken || mod.auth || mod.default;
+      if (typeof base !== "function") {
+        const err = new Error("Auth middleware not found");
+        err.status = 500;
+        return next(err);
+      }
+      _authFn = base;
+    }
+    return _authFn(req, res, next);
+  } catch (e) {
+    next(e);
+  }
+}
 
 /* 헬스체크 */
 r.get("/_ping", (_req, res) => res.json({ ok: true, where: "/api/events" }));
@@ -49,6 +78,7 @@ r.use("/", creationRouter); // 'POST /'
 r.use("/restaurants", restaurantsRouter);
 r.use("/:eventId/comments", commentsRouter); // commentsRouter는 Router({ mergeParams: true }) 필수
 
+r.get("/me", authMw, myApplications);
 /* 서브 라우터 404 (여기 블록 내에서만) */
 r.use((req, res) => {
   res

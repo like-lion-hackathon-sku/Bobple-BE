@@ -5,6 +5,7 @@ import {
   countAll,
   updateById,
   deleteById,
+  // 필요한 경우: findById, findByIdWithCreatorRestaurant 등 리포에 추가
 } from "../repository/event.repository.js";
 
 const buildChatUrl = (ev) => `/chats/event/${ev.id}`;
@@ -16,6 +17,87 @@ function toIntSafe(v, def) {
 }
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
+}
+
+/** 레코드 → 공통 출력 형태로 정규화 */
+function normalizeEventRow(ev, opts = { includeParticipants: false }) {
+  // restaurant
+  const restaurantObj = ev?.restaurant
+    ? { id: ev.restaurant.id, name: ev.restaurant.name }
+    : ev?.restaurants
+      ? { id: ev.restaurants.id, name: ev.restaurants.name }
+      : null;
+
+  // creator
+  const creatorObj = ev?.creator
+    ? { id: ev.creator.id, nickname: ev.creator.nickname }
+    : ev?.user
+      ? { id: ev.user.id, nickname: ev.user.nickname }
+      : ev?.users
+        ? { id: ev.users.id, nickname: ev.users.nickname }
+        : null;
+
+  const restaurantIdCompat =
+    restaurantObj?.id ?? ev?.restaurantId ?? ev?.restaurant_id ?? null;
+  const creatorIdCompat =
+    creatorObj?.id ??
+    ev?.creatorId ??
+    ev?.userId ??
+    ev?.creator_id ??
+    ev?.user_id ??
+    null;
+
+  const start_at = ev?.startAt ?? ev?.start_at ?? null;
+  const end_at = ev?.endAt ?? ev?.end_at ?? null;
+
+  // participants
+  let participants = [];
+  if (opts.includeParticipants) {
+    const participantsSrc =
+      ev?.eventApplications || ev?.applications || ev?.participants || [];
+    participants = participantsSrc.map((a) => ({
+      id: a?.users?.id ?? a?.user?.id ?? a?.userId ?? null,
+      nickname: a?.users?.nickname ?? a?.user?.nickname ?? null,
+      applicationId: a?.id ?? null,
+    }));
+  }
+
+  const participants_count = opts.includeParticipants
+    ? participants.length
+    : (ev?.participants_count ??
+      ev?.participantsCount ??
+      (Array.isArray(ev?.participants) ? ev.participants.length : 0));
+
+  const base = {
+    id: ev.id,
+    title: ev.title,
+    content: ev?.content ?? null,
+    chatUrl: buildChatUrl(ev),
+
+    // 객체 그대로
+    creator: creatorObj,
+    restaurant: restaurantObj,
+
+    // 호환 평탄 필드(점진 마이그레이션)
+    creatorId: creatorIdCompat,
+    creator_id: creatorIdCompat,
+    restaurantId: restaurantIdCompat,
+    restaurant_id: restaurantIdCompat,
+
+    // 날짜/참가자 (snake + camel 동시 제공)
+    start_at,
+    end_at,
+    startAt: start_at,
+    endAt: end_at,
+    participants_count,
+    participantsCount: participants_count,
+  };
+
+  if (opts.includeParticipants) {
+    base.participants = participants;
+  }
+
+  return base;
 }
 
 /**
@@ -31,71 +113,14 @@ export async function list(q) {
   const size = clamp(toIntSafe(sizeRaw, 12), 1, 50);
 
   const [rows, total] = await Promise.all([
-    // ⚠️ findMany가 반드시 creator/restaurant를 include하도록 repository에서 보장해야 합니다.
-    //    (아래에 repo 체크리스트 첨부)
+    // ⚠️ repository.findMany(skip, take)는 반드시 creator/restaurant include 보장 권장
     findMany((page - 1) * size, size),
     countAll(),
   ]);
 
-  const items = rows.map((ev) => {
-    // repo가 조인해준 객체 우선 사용 (백업으로 다양한 필드명 대응)
-    const restaurantObj = ev.restaurant
-      ? { id: ev.restaurant.id, name: ev.restaurant.name }
-      : ev.restaurants
-        ? { id: ev.restaurants.id, name: ev.restaurants.name }
-        : null;
-
-    const creatorObj = ev.creator
-      ? { id: ev.creator.id, nickname: ev.creator.nickname }
-      : ev.user
-        ? { id: ev.user.id, nickname: ev.user.nickname }
-        : ev.users
-          ? { id: ev.users.id, nickname: ev.users.nickname }
-          : null;
-
-    // 호환용 상위 id (가능한 모든 후보에서 뽑아서 채움)
-    const restaurantIdCompat =
-      restaurantObj?.id ?? ev.restaurantId ?? ev.restaurant_id ?? null;
-    const creatorIdCompat =
-      creatorObj?.id ??
-      ev.creatorId ??
-      ev.userId ??
-      ev.creator_id ??
-      ev.user_id ??
-      null;
-
-    const start_at = ev.startAt ?? ev.start_at ?? null;
-    const end_at = ev.endAt ?? ev.end_at ?? null;
-    const participants_count =
-      ev.participants_count ??
-      ev.participantsCount ??
-      (Array.isArray(ev.participants) ? ev.participants.length : 0);
-
-    return {
-      id: ev.id,
-      title: ev.title,
-      content: ev.content ?? null,
-      chatUrl: buildChatUrl(ev),
-
-      // ✅ 객체 그대로 제공 (FE에서 e.creator?.nickname, e.restaurant?.name 사용 가능)
-      creator: creatorObj,
-      restaurant: restaurantObj,
-
-      // ✅ 호환용 평탄 필드(점진 마이그레이션)
-      creatorId: creatorIdCompat,
-      creator_id: creatorIdCompat,
-      restaurantId: restaurantIdCompat,
-      restaurant_id: restaurantIdCompat,
-
-      // 날짜/참가자 (snake + camel 동시 제공)
-      start_at,
-      end_at,
-      startAt: start_at,
-      endAt: end_at,
-      participants_count,
-      participantsCount: participants_count,
-    };
-  });
+  const items = (rows ?? []).map((ev) =>
+    normalizeEventRow(ev, { includeParticipants: false }),
+  );
 
   return {
     items,
@@ -111,67 +136,99 @@ export async function list(q) {
 /**
  * 상세 조회
  * - 목록과 동일하게 creator/restaurant 객체 + 호환 필드 제공
+ * - 참가자 목록 포함
  */
 export async function detail(eventId) {
-  const ev = await findByIdWithParticipants(eventId);
+  const id = toIntSafe(eventId, null);
+  if (!id) {
+    const err = new Error("bad request");
+    err.status = 400;
+    throw err;
+  }
+
+  const ev = await findByIdWithParticipants(id);
   if (!ev) {
     const err = new Error("not found");
     err.status = 404;
     throw err;
   }
 
-  const participantsSrc =
-    ev.eventApplications || ev.applications || ev.participants || [];
-  const participants = participantsSrc.map((a) => ({
-    id: a.users?.id ?? a.user?.id ?? null,
-    nickname: a.users?.nickname ?? a.user?.nickname ?? null,
-    applicationId: a.id ?? null,
-  }));
-
-  // creator/restaurant 객체 구성 (여러 필드명 대응)
-  const creatorObj = ev.creator
-    ? { id: ev.creator.id, nickname: ev.creator.nickname }
-    : ev.user
-      ? { id: ev.user.id, nickname: ev.user.nickname }
-      : ev.users
-        ? { id: ev.users.id, nickname: ev.users.nickname }
-        : { id: ev.creatorId ?? ev.userId ?? null, nickname: null };
-
-  const restaurantObj = ev.restaurant
-    ? { id: ev.restaurant.id, name: ev.restaurant.name }
-    : ev.restaurants
-      ? { id: ev.restaurants.id, name: ev.restaurants.name }
-      : { id: ev.restaurantId ?? ev.restaurant_id ?? null, name: null };
-
-  const restaurant_id = restaurantObj.id ?? null;
-  const start_at = ev.startAt ?? ev.start_at ?? null;
-  const end_at = ev.endAt ?? ev.end_at ?? null;
-
-  return {
-    id: ev.id,
-    title: ev.title,
-    content: ev.content ?? null,
-    chatUrl: buildChatUrl(ev),
-
-    // 객체
-    creator: creatorObj,
-    restaurant: restaurantObj,
-
-    // 호환 필드
-    restaurant_id,
-    restaurantId: restaurant_id,
-    start_at,
-    end_at,
-    startAt: start_at,
-    endAt: end_at,
-
-    // 참가자
-    participants_count: participants.length,
-    participants,
-    participantsCount: participants.length,
-  };
+  return normalizeEventRow(ev, { includeParticipants: true });
 }
 
-/*
- * 밥약 수정/취소는 기존 그대로 (필요한 경우만 평탄/객체 동시 유지)
+/**
+ * 수정
+ * - 권한 체크는 repository 혹은 여기서 수행 (여기서는 user.id 비교 가정 X, 라우터/서비스 합의에 따름)
+ */
+export async function edit(eventId, body, user) {
+  const id = toIntSafe(eventId, null);
+  if (!id) {
+    const err = new Error("bad request");
+    err.status = 400;
+    throw err;
+  }
+  if (!user?.id) {
+    const err = new Error("unauthorized");
+    err.status = 401;
+    throw err;
+  }
+
+  // 업데이트 필드 화이트리스트
+  const payload = {};
+  if (typeof body?.title === "string") payload.title = body.title.trim();
+  if (typeof body?.content === "string") payload.content = body.content;
+  if (body?.start_at || body?.startAt)
+    payload.startAt = body.start_at ?? body.startAt;
+  if (body?.end_at || body?.endAt) payload.endAt = body.end_at ?? body.endAt;
+  if (body?.restaurant_id || body?.restaurantId) {
+    payload.restaurantId = body.restaurant_id ?? body.restaurantId;
+  }
+
+  const updated = await updateById(id, payload, user);
+  if (!updated) {
+    const err = new Error("not found");
+    err.status = 404;
+    throw err;
+  }
+  // repository.updateById에서 권한 불일치 시 403을 던지도록 설계 권장
+  return normalizeEventRow(updated, { includeParticipants: false });
+}
+
+/**
+ * 취소(삭제 동작)
+ */
+export async function cancel(eventId, user) {
+  const id = toIntSafe(eventId, null);
+  if (!id) {
+    const err = new Error("bad request");
+    err.status = 400;
+    throw err;
+  }
+  if (!user?.id) {
+    const err = new Error("unauthorized");
+    err.status = 401;
+    throw err;
+  }
+
+  // repository.deleteById는 작성자/관리자 권한 체크 후 403/404를 던지도록 구현 권장
+  const result = await deleteById(id, user);
+  // result 형식 통일 (라우터에서 그대로 내려주기 쉬움)
+  return { deleted: result?.deleted ?? (result ? 1 : 0), id };
+}
+
+/* ─────────────────────────────
+ * 리포지토리 체크리스트 (권장)
+ * - findMany(skip, take):
+ *    include: { creator: { select: { id, nickname } }, restaurant: { select: { id, name } } }
+ * - findByIdWithParticipants(id):
+ *    include: {
+ *      creator: { select: { id, nickname } },
+ *      restaurant: { select: { id, name } },
+ *      eventApplications: { include: { user: { select: { id, nickname } } } } // 네이밍에 맞게
+ *    }
+ * - updateById(id, payload, user):
+ *    작성자 또는 관리자 권한 검증 → 아니면 { status:403 } throw
+ * - deleteById(id, user):
+ *    동일하게 권한 검증 후 삭제 → { deleted: 1 }
+ * ─────────────────────────────
  */

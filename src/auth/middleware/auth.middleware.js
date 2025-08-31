@@ -1,75 +1,104 @@
+// src/auth/middleware/auth.middleware.js
 import { verifyAccessToken } from "../../utils/jwt.js";
 import { InvalidTokenError, LoginRequiredError } from "../../error.js";
+
 /**
- * **[Auth]**
- * **\<🔌 Middleware\>**
- * ***authenticateAccessToken***
- * 엑세스 토큰 검증을 위한 미들웨어입니다. 로그인이 필수인 기능에 활용 가능합니다.
- * @param {Object} req - [요청 객체]
- * @param {Object} res - [응답 객체]
- * @param {Function} next - [다음 미들웨어 함수]
+ * [Auth] <🔌 Middleware>
+ * authenticateAccessToken
+ * - 쿠키 accessToken 또는 Authorization: Bearer 를 허용
+ * - accessToken이 없으면 401
+ * - 검증 성공 시 req.payload, req.user 모두 세팅(호환성)
  */
 export const authenticateAccessToken = async (req, res, next) => {
-  // 쿠키로 부터 액세스 토큰만 추출
-  const { accessToken, refreshToken } = req.cookies;
-  // 엑세스 토큰, 리프레시 토큰이 모두 존재하지 않는 경우 비로그인 상태로 간주하고 에러 throw
-  if (!accessToken && !refreshToken)
-    return next(new LoginRequiredError("로그인이 필요합니다."));
-  // 액세스 토큰이 존재하지 않은 경우 에러를 반환합니다.
-  if (!accessToken)
-    return next(new InvalidTokenError("유효하지 않은 인증 토큰 입니다."));
-  // 토큰을 검증하고 페이로드를 가져옵니다.
-  const payload = verifyAccessToken(accessToken);
-  // 토큰이 유효하지 않은 경우 에러를 반환합니다.
-  if (!payload)
-    return next(new InvalidTokenError("유효하지 않은 인증 토큰 입니다."));
-  // 요청 객체에 디코딩한 페이로드를 첨부하여 다음 미들웨어로 전달합니다.
-  req.payload = payload;
-  return next();
+  try {
+    // 1) 우선 순위: 쿠키 accessToken
+    const { accessToken } = req.cookies || {};
+    let token = accessToken;
+
+    // 2) 대안: Authorization: Bearer <JWT>
+    const h = req.headers.authorization;
+    if (!token && typeof h === "string" && h.startsWith("Bearer ")) {
+      token = h.slice(7).trim();
+    }
+
+    // 3) accessToken이 전혀 없으면 로그인 필요
+    if (!token) {
+      const err = new LoginRequiredError("로그인이 필요합니다.");
+      err.status = 401;
+      return next(err);
+    }
+
+    // 4) 토큰 검증
+    const payload = verifyAccessToken(token);
+    if (!payload) {
+      const err = new InvalidTokenError("유효하지 않은 인증 토큰 입니다.");
+      err.status = 401;
+      return next(err);
+    }
+
+    // 5) 호환성: payload와 user 모두 세팅
+    req.payload = payload;
+    req.user = payload; // 기존 코드들이 req.user 사용하므로 추가
+
+    return next();
+  } catch (e) {
+    // verifyAccessToken 내부에서 throw 된 경우도 401로 통일
+    e.status = 401;
+    return next(e);
+  }
 };
 
 /**
- * **[Auth]**
- * **\<🔌 Middleware\>**
- * ***identifyAccessToken***
- * 엑세스 토큰 검증을 위한 미들웨어입니다. 선택적 로그인이 필요한 기능에 활용 가능합니다.
- * @param {Object} req - [요청 객체]
- * @param {Object} res - [응답 객체]
- * @param {Function} next - [다음 미들웨어 함수]
+ * [Auth] <🔌 Middleware>
+ * identifyAccessToken
+ * - 선택적 로그인: 있으면 검증해서 payload/user 세팅, 없거나 무효면 null
+ * - 쿠키 accessToken 또는 Authorization: Bearer 허용
  */
 export const identifyAccessToken = async (req, res, next) => {
-  // 쿠키로 부터 액세스 토큰만 추출
-  const { accessToken, refreshToken } = req.cookies;
-  // 토큰이 하나라도 존재하지 않으면 페이로드를 null값으로 반환
-  if (!accessToken || !refreshToken) {
+  try {
+    const { accessToken } = req.cookies || {};
+    let token = accessToken;
+
+    const h = req.headers.authorization;
+    if (!token && typeof h === "string" && h.startsWith("Bearer ")) {
+      token = h.slice(7).trim();
+    }
+
+    if (!token) {
+      req.payload = null;
+      req.user = null;
+      return next();
+    }
+
+    const payload = verifyAccessToken(token);
+    if (!payload) {
+      req.payload = null;
+      req.user = null;
+      return next();
+    }
+
+    req.payload = payload;
+    req.user = payload;
+    return next();
+  } catch {
     req.payload = null;
+    req.user = null;
     return next();
   }
-  // 토큰을 검증하고 페이로드를 가져옵니다.
-  const payload = verifyAccessToken(accessToken);
-  // 토큰이 유효하지 않은 경우 페이로드를 null값으로 반환
-  if (!payload) {
-    req.payload = null;
-    return next();
-  }
-  // 요청 객체에 디코딩한 페이로드를 첨부하여 다음 미들웨어로 전달합니다.
-  req.payload = payload;
-  return next();
 };
 
 /**
- * **[Auth]**
- * **\<🔌 Middleware\>**
- * ***verifyUserIsActive***
- * 계정의 활성화 여부를 검사하는 미들웨어 입니다.
- * @param {Object} req - [요청 객체]
- * @param {Object} res - [응답 객체]
- * @param {Function} next - [다음 미들웨어 함수]
+ * [Auth] <🔌 Middleware>
+ * verifyUserIsActive
+ * - 계정 활성/프로필 완료 여부 검사
  */
 export const verifyUserIsActive = (req, res, next) => {
-  // ✅ 유효성 검사 (유저 권한)
-  if (!req.payload.isCompleted) {
-    next(new InvalidTokenError("유효하지 않은 인증 토큰입니다.", req.body));
+  // req.user 또는 req.payload 어느 쪽이든 확인
+  const user = req.user || req.payload;
+  if (!user || !user.isCompleted) {
+    return next(
+      new InvalidTokenError("유효하지 않은 인증 토큰입니다.", req.body),
+    );
   }
   next();
 };

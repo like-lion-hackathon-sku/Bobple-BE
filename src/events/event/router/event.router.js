@@ -1,4 +1,4 @@
-// src/events/event/router/event.router.js
+// 위치: src/events/event/router/event.router.js
 import { Router } from "express";
 import { list, detail, edit, cancel } from "../service/event.service.js";
 

@@ -1,4 +1,4 @@
-// src/events/router/events.router.js
+// 위치: src/events/router/events.router.js
 import { Router } from "express";
 
 // 하위 라우터 (절대경로 금지: 내부에서 '/' 기준으로만 정의)
@@ -9,15 +9,6 @@ import restaurantsRouter from "../../restaurants/router/restaurants.router.js";
 import commentsRouter from "../comments/router/comments.router.js";
 
 const r = Router();
-
-/* 헬스체크 */
-r.get("/_ping", (_req, res) => res.json({ ok: true, where: "/api/events" }));
-
-/* 공통 로그 */
-r.use((req, _res, next) => {
-  console.log("[EVENTS] hit", req.method, req.originalUrl);
-  next();
-});
 
 // 프리플라이트/HEAD 공통 미들웨어 (경로 없이 메서드로만 처리)
 r.use((req, res, next) => {
@@ -42,14 +33,17 @@ r.use((req, res, next) => {
   next();
 });
 
-/* 하위 라우터 마운트 (상대 경로만) */
-r.use("/", eventRouter); // '/', '/:eventId'
-r.use("/", applicationRouter); // 신청 관련 경로들
-r.use("/", creationRouter); // 'POST /'
+// 하위 라우터 마운트 (상대 경로만)
+r.use("/", applicationRouter);
+r.use("/", eventRouter);
+r.use("/", creationRouter);
 r.use("/restaurants", restaurantsRouter);
-r.use("/:eventId/comments", commentsRouter); // commentsRouter는 Router({ mergeParams: true }) 필수
+r.use("/:eventId/comments", commentsRouter);
 
-/* 서브 라우터 404 (여기 블록 내에서만) */
+/*
+  404 Not Found 핸들러
+  위의 라우터 마운트 외의 요청은 여기를 통해 "404 Not Found"가 나오게 했어용
+*/
 r.use((req, res) => {
   res
     .status(404)

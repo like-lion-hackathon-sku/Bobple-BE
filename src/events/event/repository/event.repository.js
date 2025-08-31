@@ -1,4 +1,4 @@
-// src/events/event/repository/event.repository.js
+// 위치: src/events/event/repository/event.repository.js
 import { PrismaClient } from "../../../generated/prisma/index.js";
 
 /** PrismaClient 싱글턴 */
@@ -12,7 +12,9 @@ const toPosInt = (v, def = 0) => {
   return Number.isInteger(n) && n >= 0 ? n : def;
 };
 
-/** 목록 조회 (페이지네이션, 최신순) */
+/* 목록 조회 (페이지네이션, 최신순)
+ *
+ */
 export async function findMany(skip = 0, take = 12) {
   const _skip = toPosInt(skip, 0);
   const _take = toPosInt(take, 12);
@@ -32,12 +34,15 @@ export async function findMany(skip = 0, take = 12) {
   return rows.map(toListItemDTO);
 }
 
-/** 전체 개수 */
+/* 밥약 개수 카운트 함수
+ */
 export function countAll() {
   return prisma.events.count();
 }
 
-/** 상세 + 참가자 포함 */
+/* 밥약 상세 조회 함수
+ *
+ */
 export async function findByIdWithParticipants(eventId) {
   const id = Number(eventId);
   if (!Number.isInteger(id) || id <= 0) {

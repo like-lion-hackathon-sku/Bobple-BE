@@ -1,4 +1,4 @@
-// src/events/event/controller/event.controller.js
+// 위치: src/events/event/controller/event.controller.js
 import { StatusCodes } from "http-status-codes";
 import * as svc from "../../service/event.service.js";
 import {
@@ -7,8 +7,10 @@ import {
   parseEditBody,
 } from "../../dto/request/event.request.dto.js";
 
-// GET /api/events
-
+/* 밥약 목록 조회
+ * 매서드: GET
+ * 엔드포인트: /api/events
+ */
 export async function list(req, res, next) {
   try {
     const dto = parseListQuery(req.query);
@@ -19,7 +21,10 @@ export async function list(req, res, next) {
   }
 }
 
-// GET /api/events/:eventId
+/* 밥약 상세 조회
+ * 매서드: GET
+ * 엔드포인드: /api/events/:eventId
+ */
 export async function detail(req, res, next) {
   try {
     const { eventId } = parseEventIdParam(req.params);
@@ -30,7 +35,10 @@ export async function detail(req, res, next) {
   }
 }
 
-// PATCH /api/events/:eventId   ← /edit suffix 제거 권장
+/* 밥약 수정
+ * 매서드: PUT
+ * 엔드포인트: /api/events/:eventId
+ */
 export async function edit(req, res, next) {
   try {
     const { eventId } = parseEventIdParam(req.params);
@@ -42,7 +50,10 @@ export async function edit(req, res, next) {
   }
 }
 
-// PATCH /api/events/:eventId/cancel   ← POST → PATCH 권장
+/* 밥약 취소(삭제)
+ * 매서드: PUT
+ * 엔드포인트: /api/events/:eventId/cancel
+ */
 export async function cancel(req, res, next) {
   try {
     const { eventId } = parseEventIdParam(req.params);

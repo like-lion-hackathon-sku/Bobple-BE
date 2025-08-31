@@ -1,4 +1,4 @@
-// src/events/event/service/event.service.js
+// 위치: src/events/event/service/event.service.js
 import {
   findByIdWithParticipants,
   findMany,
@@ -10,7 +10,9 @@ import {
 
 const buildChatUrl = (ev) => `/chats/event/${ev.id}`;
 
-/** 숫자 가드 */
+/* 숫자 가드 함수
+   page,size를 안전하게
+*/
 function toIntSafe(v, def) {
   const n = parseInt(String(v ?? "").trim(), 10);
   return Number.isFinite(n) ? n : def;
@@ -100,8 +102,7 @@ function normalizeEventRow(ev, opts = { includeParticipants: false }) {
   return base;
 }
 
-/**
- * 목록 조회
+/* 밥약 목록 조회 함수
  * - creator/restaurant 객체를 유지해서 FE가 닉네임/장소명을 바로 쓸 수 있게 함
  * - 동시에 구버전 호환을 위해 상위 id 필드도 같이 내려줌
  */
@@ -133,8 +134,8 @@ export async function list(q) {
   };
 }
 
-/**
- * 상세 조회
+/* 밥약 상세 조회 함수
+
  * - 목록과 동일하게 creator/restaurant 객체 + 호환 필드 제공
  * - 참가자 목록 포함
  */
@@ -194,8 +195,9 @@ export async function edit(eventId, body, user) {
   return normalizeEventRow(updated, { includeParticipants: false });
 }
 
-/**
- * 취소(삭제 동작)
+/* 밥약 취소(삭제) 함수
+ *
+ *
  */
 export async function cancel(eventId, user) {
   const id = toIntSafe(eventId, null);
@@ -215,20 +217,3 @@ export async function cancel(eventId, user) {
   // result 형식 통일 (라우터에서 그대로 내려주기 쉬움)
   return { deleted: result?.deleted ?? (result ? 1 : 0), id };
 }
-
-/* ─────────────────────────────
- * 리포지토리 체크리스트 (권장)
- * - findMany(skip, take):
- *    include: { creator: { select: { id, nickname } }, restaurant: { select: { id, name } } }
- * - findByIdWithParticipants(id):
- *    include: {
- *      creator: { select: { id, nickname } },
- *      restaurant: { select: { id, name } },
- *      eventApplications: { include: { user: { select: { id, nickname } } } } // 네이밍에 맞게
- *    }
- * - updateById(id, payload, user):
- *    작성자 또는 관리자 권한 검증 → 아니면 { status:403 } throw
- * - deleteById(id, user):
- *    동일하게 권한 검증 후 삭제 → { deleted: 1 }
- * ─────────────────────────────
- */

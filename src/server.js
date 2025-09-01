@@ -14,7 +14,7 @@ server.on("upgrade", (req, socket, head) => {
   const { pathname } = url.parse(req.url);
   console.log("[upgrade] URL:", req.url, "| hdr:", req.headers.upgrade);
 
-  if (pathname && pathname.startsWith("/ws/chats/")) {
+  if (pathname && pathname.startsWith("/ws/chats")) {
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, req);
     });

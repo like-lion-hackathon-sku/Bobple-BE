@@ -7,7 +7,7 @@ import { setupSwagger } from "./config/swagger.js";
 import { setupCommonError, setupExpress } from "./config/express.js";
 import { setupFirebase } from "./config/firebase.js";
 import router from "./router/router.js";
-import registerChatWSS from "./sockets/chat.ws.js";
+import registerChatWSS from "./sockets/chats.ws.js";
 
 dotenv.config();
 

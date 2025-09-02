@@ -1,8 +1,13 @@
 import dotenv from "dotenv";
+import http from "http";
+import url from "url";
+import { WebSocketServer } from "ws";
+
 import { setupSwagger } from "./config/swagger.js";
 import { setupCommonError, setupExpress } from "./config/express.js";
 import { setupFirebase } from "./config/firebase.js";
 import router from "./router/router.js";
+import registerChatWSS from "./sockets/chats.ws.js";
 
 dotenv.config();
 
@@ -48,6 +53,26 @@ app.get("/_routes", (req, res) => {
 
 // ✅ 에러 핸들러는 항상 마지막
 setupCommonError(app);
+
+const server = http.createServer(app);
+
+// noServer 모드의 WebSocket 서버 생성
+const wss = new WebSocketServer({ noServer: true });
+registerChatWSS(wss);
+
+// 업그레이드 허용 경로 제한
+server.on("upgrade", (req, socket, head) => {
+  const { pathname } = url.parse(req.url);
+  console.log("[upgrade] URL:", req.url, "| hdr:", req.headers.upgrade);
+
+  if (pathname && pathname.startsWith("/ws/chats/")) {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req);
+    });
+  } else {
+    socket.destroy();
+  }
+});
 
 app.listen(port, () => {
   console.log(`서버 열림 - 포트 : ${port}`);

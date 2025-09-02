@@ -34,14 +34,14 @@ app.get("/_routes", (req, res) => {
   for (const layer of stack) {
     if (layer.route) {
       const methods = Object.keys(layer.route.methods || {}).map((m) =>
-        m.toUpperCase(),
+        m.toUpperCase()
       );
       methods.forEach((m) => out.push(`${m} ${layer.route.path}`));
     } else if (layer.name === "router" && layer.handle?.stack) {
       for (const s of layer.handle.stack) {
         if (s.route) {
           const methods = Object.keys(s.route.methods || {}).map((m) =>
-            m.toUpperCase(),
+            m.toUpperCase()
           );
           methods.forEach((m) => out.push(`${m} ${s.route.path}`));
         }
@@ -55,6 +55,9 @@ app.get("/_routes", (req, res) => {
 setupCommonError(app);
 
 const server = http.createServer(app);
+
+server.keepAliveTimeout = 61_000;
+server.headersTimeout = 65_000;
 
 // noServer 모드의 WebSocket 서버 생성
 const wss = new WebSocketServer({ noServer: true });
@@ -74,6 +77,6 @@ server.on("upgrade", (req, socket, head) => {
   }
 });
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`서버 열림 - 포트 : ${port}`);
 });

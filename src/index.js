@@ -34,14 +34,14 @@ app.get("/_routes", (req, res) => {
   for (const layer of stack) {
     if (layer.route) {
       const methods = Object.keys(layer.route.methods || {}).map((m) =>
-        m.toUpperCase()
+        m.toUpperCase(),
       );
       methods.forEach((m) => out.push(`${m} ${layer.route.path}`));
     } else if (layer.name === "router" && layer.handle?.stack) {
       for (const s of layer.handle.stack) {
         if (s.route) {
           const methods = Object.keys(s.route.methods || {}).map((m) =>
-            m.toUpperCase()
+            m.toUpperCase(),
           );
           methods.forEach((m) => out.push(`${m} ${s.route.path}`));
         }
@@ -59,22 +59,35 @@ const server = http.createServer(app);
 server.keepAliveTimeout = 61_000;
 server.headersTimeout = 65_000;
 
-// noServer 모드의 WebSocket 서버 생성
+// [UNCHANGED] noServer 모드의 WebSocket 서버 생성 (HTTP 서버에 붙여 씀)
 const wss = new WebSocketServer({ noServer: true });
 registerChatWSS(wss);
 
-// 업그레이드 허용 경로 제한
+// [CHANGED] 업그레이드 허용 경로: /ws/chats  또는 /ws/chats/:id  모두 수용
 server.on("upgrade", (req, socket, head) => {
   const { pathname } = url.parse(req.url);
-  console.log("[upgrade] URL:", req.url, "| hdr:", req.headers.upgrade);
+  const upgradeHdr = (req.headers.upgrade || "").toLowerCase();
+  console.log("[upgrade] URL:", req.url, "| upgrade:", upgradeHdr);
 
-  if (pathname && pathname.startsWith("/ws/chats/")) {
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      wss.emit("connection", ws, req);
-    });
-  } else {
-    socket.destroy();
+  // 업그레이드 헤더 확인(보수적) + 경로 허용
+  const allow =
+    upgradeHdr === "websocket" &&
+    pathname &&
+    (pathname === "/ws/chats" ||
+      pathname === "/ws/chats/" ||
+      pathname.startsWith("/ws/chats/"));
+
+  if (!allow) {
+    try {
+      socket.write("HTTP/1.1 400 Bad Request\r\n\r\n");
+    } catch {}
+    return socket.destroy();
   }
+
+  // 통과
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wss.emit("connection", ws, req);
+  });
 });
 
 server.listen(port, () => {

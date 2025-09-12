@@ -76,6 +76,14 @@ export const listChatsRequestDto = (req) => {
   return { eventId, cursor, size, userId };
 };
 
+/**
+ * **[Chats]**
+ * **<🚪⬅️ Request DTO>**
+ * ***leaveChatRequestDto***
+ * '채팅방 나가기' 요청에서 컨트롤러가 서비스 레이어로 전달할 객체를 매핑하기 위한 DTO
+ * @param {Object} req - Express 요청 객체
+ * @returns {Object} - 서비스 레이어로 전달될 { eventId, userId }
+ */
 export const leaveChatRequestDto = (req) => {
   const eventId = Number(req.params.eventID);
   if (!Number.isInteger(eventId) || eventId < 1) {

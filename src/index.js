@@ -52,17 +52,25 @@ setupCommonError(app);
 import http from "http";
 import registerChatWSS from "./sockets/chats.ws.js";
 
-// app.listen(...) 쓰지 말고, 반드시 http 서버를 만듭니다.
+// ✅ Express의 app.listen(...) 대신 http.Server를 직접 생성해야 합니다.
+// 이유: WebSocket은 HTTP Upgrade 요청을 처리해야 하므로 http.Server 객체가 필요합니다.
 const server = http.createServer(app);
 
-// (선택) 타임아웃 설정 유지
+// ⚙️ 타임아웃 설정
+// - keepAliveTimeout: 클라이언트 연결을 유지하는 최대 시간 (61초)
+// - headersTimeout: 전체 HTTP 헤더 수신 제한 시간 (65초)
+// → 긴 폴링/WS 연결 시 타임아웃 에러 방지
 server.keepAliveTimeout = 61_000;
 server.headersTimeout = 65_000;
 
-// WebSocket 붙이기 (업그레이드 처리까지 chats.ws.js 내부에서 함)
+// 🌐 WebSocket 서버 등록
+// registerChatWSS 함수 내부에서 "upgrade" 이벤트를 가로채어
+// WebSocket 연결을 처리합니다. (경로: /ws/chats)
 registerChatWSS(server);
 
-// ⛔️ const port 재선언 금지! 위에서 선언한 port를 그대로 사용.
+// 🚀 서버 실행
+// ⚠️ 주의: port 변수는 이미 선언된 것을 그대로 사용해야 하며,
+// 새로운 const port를 재선언하면 충돌이 발생합니다.
 server.listen(port, () => {
   console.log(`서버 열림 - 포트 : ${port}`);
 });

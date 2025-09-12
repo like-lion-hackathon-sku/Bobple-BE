@@ -1,8 +1,25 @@
 // src/sockets/chats.ws.js
+
+/**
+ * **[Chats]**
+ * **<🌐 WebSocket>**
+ * ***registerChatWSS***
+ * '이벤트 채팅방 WebSocket' 기능의 엔트리포인트입니다.
+ * HTTP 서버에 WebSocket 서버를 등록하여, 이벤트별 실시간 채팅 기능을 제공합니다.
+ * - 클라이언트는 `wss://<host>/ws/chats?eventId=123` 로 접속합니다.
+ * - `accessToken` 쿠키를 이용해 인증을 수행합니다.
+ * - 연결 성공 시 방(rooms)에 소켓을 등록하고, 메시지를 주고받습니다.
+ * - 수신: `{"type":"chat:send","content":"안녕!"}`
+ * - 발신: `{"type":"chat:new","data":{id,eventId,userId,content,createdAt}}`
+ * - 일정 주기(30초)로 하트비트를 보내어 죽은 연결을 정리합니다.
+ * @param {http.Server} httpServer - 기존 HTTP 서버 객체
+ * @returns {void}
+ */
 import { WebSocketServer } from "ws";
 import { URL } from "url";
 
-import { verifyAccessToken } from "../utils/jwt.js"
+import { verifyAccessToken } from "../utils/jwt.js";
+
 import {
   findEventByIdRepo,
   findEventApplicationRepo,
@@ -10,9 +27,27 @@ import {
 } from "../chats/repository/chats.repository.js";
 
 // eventId -> Set<ws>
+/**
+ * **[Chats]**
+ * **<🗂️ Store>**
+ * ***rooms***
+ * 이벤트별로 연결된 WebSocket 클라이언트를 관리하는 Map 객체입니다.  
+ * - key: eventId (number)  
+ * - value: Set<WebSocket> (해당 이벤트 채팅방에 접속한 클라이언트 집합)  
+ * @type {Map<number, Set<WebSocket>>}
+ */
 const rooms = new Map();
 
-// 간단 쿠키 파서
+/**
+ * **[Chats]**
+ * **<🛠️ Util>**
+ * ***parseCookies***
+ * 요청 헤더의 쿠키 문자열을 파싱하여 객체 형태로 변환합니다.  
+ * - 입력: `"key1=value1; key2=value2"`  
+ * - 출력: `{ key1: "value1", key2: "value2" }`
+ * @param {string} header - 쿠키 문자열
+ * @returns {Object} - key-value 형태의 쿠키 객체
+ */
 function parseCookies(header = "") {
   if (!header) return {};
   return Object.fromEntries(
@@ -27,18 +62,21 @@ function parseCookies(header = "") {
   );
 }
 
-// 좀비 소켓 제거용
-function heartbeat() {
-  this.isAlive = true;
-}
 
 /**
- * HTTP 서버에 WebSocket 채팅을 등록한다.
- * - 접속: wss://<host>/ws/chats?eventId=123
- * - 쿠키: accessToken 필수 (verifyAccessToken(payload)에서 id 또는 userId 포함 가정)
- * - 수신: {"type":"chat:send","content":"안녕!"}
- * - 발신: {"type":"chat:new","data":{id,eventId,userId,content,createdAt}}
+ * **[Chats]**
+ * **<🛠️ Util>**
+ * ***heartbeat***
+ * WebSocket 연결의 생존 여부를 갱신하는 함수입니다.  
+ * - 서버가 ping을 보내고 클라이언트가 pong 응답 시 호출됩니다.  
+ * - 해당 소켓의 `isAlive` 상태를 `true`로 업데이트합니다.
+ * @this {WebSocket}
+ * @returns {void}
  */
+function heartbeat() {
+  this.isAlive = true; 
+}
+
 export default function registerChatWSS(httpServer) {
   const wss = new WebSocketServer({ noServer: true });
 

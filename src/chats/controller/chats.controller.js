@@ -13,6 +13,13 @@ import {
   mapChatsListResponseDto,
 } from "../dto/response/chats.response.dto.js";
 
+
+/**
+ * **[Chats]**
+ * **<🕹️ Controller>**
+ * ***handleSendChats***
+ * '채팅 전송' 기능 담당 API의 컨트롤러
+ */
 export const handleSendChats = async (req, res, next) => {
   /*
     #swagger.summary = '채팅 메시지 전송'
@@ -69,6 +76,13 @@ export const handleSendChats = async (req, res, next) => {
   }
 };
 
+
+/**
+ * **[Chats]**
+ * **<🕹️ Controller>**
+ * ***handleListChats***
+ * '채팅 목록 조회' 기능 담당 API의 컨트롤러
+ */
 export const handleListChats = async (req, res, next) => {
   /*
     #swagger.summary = '채팅방 내용 불러오기'
@@ -128,6 +142,13 @@ export const handleListChats = async (req, res, next) => {
   }
 };
 
+
+/**
+ * **[Chats]**
+ * **<🕹️ Controller>**
+ * ***handleLeaveChat***
+ * '채팅방 나가기' 기능 담당 API의 컨트롤러
+ */
 export const handleLeaveChat = async (req, res, next) => {
   /*
     #swagger.summary = '채팅방 나가기'

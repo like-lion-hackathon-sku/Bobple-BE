@@ -20,6 +20,18 @@ class NotFoundEventError extends Error {
   }
 }
 
+/**
+ * **[Chats]**
+ * **<🛠️ Service>**
+ * ***sendChatsSvc***
+ * '채팅 메시지 전송' 기능의 서비스 레이어입니다.
+ * 이벤트 존재 여부와 참가자 권한을 확인한 뒤, 새로운 채팅 메시지를 저장하고 반환합니다.
+ * @param {Object} params
+ * @param {number} params.eventId - 이벤트 ID
+ * @param {number} params.userId - 사용자 ID
+ * @param {string} params.content - 채팅 메시지 내용
+ * @returns {Object} - 생성된 채팅 객체
+ */
 export const sendChatsSvc = async ({ eventId, userId, content }) => {
   const event = await findEventByIdRepo(eventId);
   if (!eventId) {
@@ -39,6 +51,18 @@ export const sendChatsSvc = async ({ eventId, userId, content }) => {
   return chat;
 };
 
+/**
+ * **[Chats]**
+ * **<🛠️ Service>**
+ * ***listChatsSvc***
+ * '채팅 메시지 목록 조회' 기능의 서비스 레이어입니다.
+ * 이벤트와 참가자 권한을 검증한 뒤, 커서 기반 페이지네이션 방식으로 채팅 목록을 조회하고 nextCursor를 반환합니다.
+ * @param {Object} params
+ * @param {number} params.eventId - 이벤트 ID
+ * @param {number|null} params.cursor - 페이지네이션용 커서 ID
+ * @param {number} params.size - 가져올 메시지 개수
+ * @returns {Object} - { items, nextCursor } 형태의 채팅 목록 응답
+ */
 export const listChatsSvc = async ({ eventId, cursor, size }) => {
   const event = await findEventByIdRepo(eventId);
   if (!eventId) {
@@ -67,6 +91,17 @@ export const listChatsSvc = async ({ eventId, cursor, size }) => {
   return { items, nextCursor };
 };
 
+/**
+ * **[Chats]**
+ * **<🛠️ Service>**
+ * ***leaveChatSvc***
+ * '채팅방 나가기' 기능의 서비스 레이어입니다.
+ * 이벤트와 참가자 권한을 검증한 뒤, DB 변경 없이 나가기 처리를 완료합니다.
+ * @param {Object} params
+ * @param {number} params.eventId - 이벤트 ID
+ * @param {number} params.userId - 사용자 ID
+ * @returns {void}
+ */
 export const leaveChatSvc = async ({ eventId, userId }) => {
   const event = await findEventByIdRepo(eventId);
   if (!eventId) {

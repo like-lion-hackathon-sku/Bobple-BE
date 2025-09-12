@@ -1,41 +1,24 @@
 import { prisma } from "../../db.config.js";
 
-/** WS에서 사용: 메시지 저장 + 작성자 조인 */
-export const createChatRepo = async ({ eventId, userId, content }) => {
-  return prisma.chats.create({
-    data: { eventId, userId, content },
-    include: {
-      users: {
-        select: {
-          id: true,
-          nickname: true,
-          profileImg: true, // @map("profile_img") 필드. Prisma에선 camelCase로 접근
-        },
-      },
-    },
+export const createChatsRepo = async ({ eventId, userId, content }) => {
+  return await prisma.chats.create({ data: { eventId, userId, content } });
+};
+
+export const findEventByIdRepo = async (eventId) => {
+  return await prisma.events.findUnique({ where: { id: eventId } });
+};
+
+export const findEventApplicationRepo = async ({ eventId, userId }) => {
+  return await prisma.eventApplications.findFirst({
+    where: { eventId, creatorId: userId },
   });
 };
 
-/** 과거 메시지 조회 */
-export const listChatsRepo = async ({ eventId, page, size }) => {
-  const skip = (page - 1) * size;
-  return prisma.chats.findMany({
-    where: { eventId },
-    orderBy: { createdAt: "asc" },
-    skip,
+export const listChatsRepo = async ({ eventId, cursor, size }) => {
+  return await prisma.chats.findMany({
+    where: { eventid, ...(cursor ? { id: { lt: cursor } } : {}) },
+    orderBy: { id: "desc" },
     take: size,
-    include: {
-      users: {
-        select: {
-          id: true,
-          nickname: true,
-          profileImg: true,
-        },
-      },
-    },
+    include: { users: { id: true, nickname: true } },
   });
-};
-
-export const countChatsRepo = async ({ eventId }) => {
-  return prisma.chats.count({ where: { eventId } });
 };

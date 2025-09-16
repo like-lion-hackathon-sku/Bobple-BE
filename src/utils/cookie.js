@@ -1,52 +1,34 @@
-/**
- * **[Cookie]**
- * **\<🪛 Utils\>**
- * ***setTokenCookies***
- * 로그인 시 사용되는 엑세스 토큰과 리프레시 토큰을 쿠키로 저장합니다.
- * @param {Object} res - [응답 객체]
- * @param {String} accessToken - [엑세스 토큰]
- * @param {String} refreshToken - [리프레시 토큰]
- */
 export const setTokenCookies = (res, accessToken, refreshToken) => {
+  const isProd = process.env.SERVER_ENV === "production"; // 또는 NODE_ENV
+  const base = {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    path: "/", // ★ 중요: 전체 경로에서 쿠키 전송
+  };
+
   if (accessToken) {
-    // 🍪 엑세스 토큰을 쿠키로 저장(Http-only)
     res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.SERVER_ENV === "production",
-      sameSite: process.env.SERVER_ENV === "production" ? "none" : "lax",
+      ...base,
       maxAge: 1000 * 60 * 10,
     });
   }
   if (refreshToken) {
-    // 🍪 리프레시 토큰을 쿠키로 저장(Http-only)
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.SERVER_ENV === "production",
-      sameSite: process.env.SERVER_ENV === "production" ? "none" : "lax",
+      ...base,
       maxAge: 1000 * 60 * 60 * 24 * 7,
     });
   }
 };
-/**
- * **[Cookie]**
- * **\<🪛 Utils\>**
- * ***clearTokenCookies***
- * 액세스 토큰과 리프레시 토큰을 쿠키 저장소로부터 제거합니다.
- * @param {Object} res - [응답 객체]
- */
+
 export const clearTokenCookies = (res) => {
-  // 🍪 엑세스 토큰을 쿠키 저장소에서 제거
-  res.clearCookie("accessToken", {
+  const isProd = process.env.SERVER_ENV === "production";
+  const base = {
     httpOnly: true,
-    secure: process.env.SERVER_ENV === "production",
-    sameSite: process.env.SERVER_ENV === "production" ? "none" : "lax",
-    maxAge: 1000 * 60 * 10,
-  });
-  // 🍪 리프레시 토큰을 쿠키 저장소에서 제거
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: process.env.SERVER_ENV === "production",
-    sameSite: process.env.SERVER_ENV === "production" ? "none" : "lax",
-    maxAge: 1000 * 60 * 60 * 24 * 7,
-  });
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    path: "/", // ★ set 할 때와 동일해야 정확히 삭제됨
+  };
+  res.clearCookie("accessToken", base);
+  res.clearCookie("refreshToken", base);
 };

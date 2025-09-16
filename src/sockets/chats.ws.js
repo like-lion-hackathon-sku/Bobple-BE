@@ -31,9 +31,9 @@ import {
  * **[Chats]**
  * **<🗂️ Store>**
  * ***rooms***
- * 이벤트별로 연결된 WebSocket 클라이언트를 관리하는 Map 객체입니다.  
- * - key: eventId (number)  
- * - value: Set<WebSocket> (해당 이벤트 채팅방에 접속한 클라이언트 집합)  
+ * 이벤트별로 연결된 WebSocket 클라이언트를 관리하는 Map 객체입니다.
+ * - key: eventId (number)
+ * - value: Set<WebSocket> (해당 이벤트 채팅방에 접속한 클라이언트 집합)
  * @type {Map<number, Set<WebSocket>>}
  */
 const rooms = new Map();
@@ -42,8 +42,8 @@ const rooms = new Map();
  * **[Chats]**
  * **<🛠️ Util>**
  * ***parseCookies***
- * 요청 헤더의 쿠키 문자열을 파싱하여 객체 형태로 변환합니다.  
- * - 입력: `"key1=value1; key2=value2"`  
+ * 요청 헤더의 쿠키 문자열을 파싱하여 객체 형태로 변환합니다.
+ * - 입력: `"key1=value1; key2=value2"`
  * - 출력: `{ key1: "value1", key2: "value2" }`
  * @param {string} header - 쿠키 문자열
  * @returns {Object} - key-value 형태의 쿠키 객체
@@ -62,19 +62,18 @@ function parseCookies(header = "") {
   );
 }
 
-
 /**
  * **[Chats]**
  * **<🛠️ Util>**
  * ***heartbeat***
- * WebSocket 연결의 생존 여부를 갱신하는 함수입니다.  
- * - 서버가 ping을 보내고 클라이언트가 pong 응답 시 호출됩니다.  
+ * WebSocket 연결의 생존 여부를 갱신하는 함수입니다.
+ * - 서버가 ping을 보내고 클라이언트가 pong 응답 시 호출됩니다.
  * - 해당 소켓의 `isAlive` 상태를 `true`로 업데이트합니다.
  * @this {WebSocket}
  * @returns {void}
  */
 function heartbeat() {
-  this.isAlive = true; 
+  this.isAlive = true;
 }
 
 export default function registerChatWSS(httpServer) {
@@ -83,25 +82,44 @@ export default function registerChatWSS(httpServer) {
   // HTTP -> WS 업그레이드 (경로/권한 체크)
   httpServer.on("upgrade", async (req, socket, head) => {
     try {
-      const url = new URL(req.url, `http://${req.headers.host}`);
-      if (url.pathname !== "/ws/chats") {
+      const urlObj = new URL(req.url, `http://${req.headers.host}`);
+      const pathname = urlObj.pathname;
+
+      let eventId = Number(urlObj.searchParams.get("eventId"));
+      if (pathname.startsWith("/ws/chats/")) {
+        const seg = pathname.split("/").filter(Boolean);
+        const idFromPath = Number(seg[2]);
+        if (Number.isInteger(idFromPath)) eventId = idFromPath;
+      }
+      const pathOk =
+        pathname === "/ws/chats" ||
+        pathname === "/ws/chats/" ||
+        pathname.startsWith("/ws/chats/");
+      if (!pathOk || !Number.isInteger(eventId) || eventId < 1) {
         socket.destroy();
         return;
       }
 
-      const eventId = Number(url.searchParams.get("eventId"));
-      if (!Number.isInteger(eventId) || eventId < 1) {
+      const protocols = (req.headers["sec-websocket-protocol"] || "")
+        .split(",")
+        .map((s) => s.trim());
+      const tokenFromProtocol = protocols
+        .find((p) => p.startsWith("bearer."))
+        ?.slice("bearer.".length);
+
+      const tokenFromQuery = urlObj.searchParams.get("token");
+      const { accessToken: tokenFromCookie } = parseCookies(
+        req.headers.cookie || ""
+      );
+
+      const token = tokenFromProtocol || tokenFromQuery || tokenFromCookie;
+      if (!token) {
         socket.destroy();
         return;
       }
 
-      // 인증: accessToken 쿠키 확인
-      const { accessToken } = parseCookies(req.headers.cookie || "");
-      if (!accessToken) {
-        socket.destroy();
-        return;
-      }
-      const payload = verifyAccessToken(accessToken);
+      // token으로 검증
+      const payload = verifyAccessToken(token);
       const userId = payload?.id ?? payload?.userId;
       if (!userId) {
         socket.destroy();
@@ -157,7 +175,8 @@ export default function registerChatWSS(httpServer) {
 
       if (msg?.type !== "chat:send") return;
 
-      const content = (msg.content ?? "").toString();
+      // 공백 방지
+      const content = (msg.content ?? "").toString().trim;
       if (content.length < 1 || content.length > 1000) return;
 
       // DB 저장
@@ -175,7 +194,7 @@ export default function registerChatWSS(httpServer) {
           eventId: saved.eventId,
           userId: saved.userId,
           content: saved.content,
-          createdAt: saved.createdAt,
+          created_at: saved.createdAt,
         },
       });
 
@@ -187,13 +206,15 @@ export default function registerChatWSS(httpServer) {
       }
     });
 
-    ws.on("close", () => {
+    const cleanup = () => {
       const set = rooms.get(ws.eventId);
       if (set) {
         set.delete(ws);
         if (set.size === 0) rooms.delete(ws.eventId);
       }
-    });
+    };
+    ws.on("close", cleanup);
+    ws.on("error", cleanup); // error여도 정리
   });
 
   // 하트비트(죽은 연결 정리)

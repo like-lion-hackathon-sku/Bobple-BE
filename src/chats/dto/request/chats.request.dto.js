@@ -51,7 +51,7 @@ export const sendChatsRequestDto = (req) => {
  * @throws {InvalidInputValueError} - 유효하지 않은 입력 값이 있을 경우
  */
 export const listChatsRequestDto = (req) => {
-  const eventId = Number(req.params.eventID);
+  const eventId = Number(req.params.eventId);
   if (!Number.isInteger(eventId) || eventId < 1) {
     throw new InvalidInputValueError(
       "eventId가 올바르지 않습니다.",
@@ -85,7 +85,7 @@ export const listChatsRequestDto = (req) => {
  * @returns {Object} - 서비스 레이어로 전달될 { eventId, userId }
  */
 export const leaveChatRequestDto = (req) => {
-  const eventId = Number(req.params.eventID);
+  const eventId = Number(req.params.eventId);
   if (!Number.isInteger(eventId) || eventId < 1) {
     throw new InvalidInputValueError(
       "eventId가 올바르지 않습니다.",

@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id                Int                 @id @default(autoincrement())
+  email             String              @unique(map: "email") @db.VarChar(40)
+  uid               String              @unique(map: "uid") @db.VarChar(300)
+  nickname          String?             @unique(map: "nickname") @db.VarChar(10)
+  grade             Int?
+  gender            Gender?
+  profileImg        String?             @map("profile_img")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime?           @updatedAt @map("updated_at")
+  isCompleted       Boolean             @default(false) @map("is_completed")
+  chats             Chats[]
+  comments          Comments[]
+  eventApplications EventApplications[]
+  events            Events?
+  reviews           Reviews[]
+
+  @@map("users")
+}
+
+model RefreshTokens {
+  id        Int      @id @default(autoincrement())
+  token     String
+  createdAt DateTime @default(now()) @map("created_at")
+}
+
+model Events {
+  id                Int                 @id @default(autoincrement())
+  creatorId         Int                 @unique @map("creator_id")
+  title             String              @db.VarChar(100)
+  content           String
+  restaurantId      Int                 @map("restaurant_id")
+  startAt           DateTime            @map("start_at")
+  endAt             DateTime            @map("end_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  chats             Chats[]
+  comments          Comments[]
+  eventApplications EventApplications[]
+  users             Users               @relation(fields: [creatorId], references: [id])
+  restaurants       Restaurants         @relation(fields: [restaurantId], references: [id])
+
+  @@map("events")
+}
+
+model Restaurants {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  category    FoodType
+  address     String
+  telephone   String   @unique @db.VarChar(11)
+  mapx        Int
+  mapy        Int
+  isSponsored Boolean  @map("is_sponsored")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  events      Events[]
+
+  @@map("restaurants")
+}
+
+model EventApplications {
+  id        Int      @id @default(autoincrement())
+  eventId   Int      @map("event_id")
+  creatorId Int      @map("creator_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  users     Users    @relation(fields: [creatorId], references: [id])
+  events    Events   @relation(fields: [eventId], references: [id])
+
+  @@map("event_applications")
+}
+
+model Comments {
+  id        Int      @id @default(autoincrement())
+  eventId   Int      @map("event_id")
+  creatorId Int      @map("creator_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  users     Users    @relation(fields: [creatorId], references: [id])
+  events    Events   @relation(fields: [eventId], references: [id])
+
+  @@map("comments")
+}
+
+model Reviews {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  score     Float
+  createdAt DateTime @default(now()) @map("created_at")
+  users     Users    @relation(fields: [userId], references: [id])
+
+  @@map("reviews")
+}
+
+model Chats {
+  id        Int      @id @default(autoincrement())
+  eventId   Int      @map("event_id")
+  userId    Int      @map("user_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  events    Events   @relation(fields: [eventId], references: [id])
+  users     Users    @relation(fields: [userId], references: [id])
+}
+
+enum Gender {
+  Male
+  Female
+  None
+}
+
+enum FoodType {
+  Korean
+  Japanese
+  Chinese
+}

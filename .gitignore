@@ -1,0 +1,37 @@
+# node_modules 폴더 무시
+node_modules/
+
+# .env 파일 무시
+.env
+.env.*
+
+#generated 무시
+src/generated/
+prisma/migrations
+/src/generated/prisma
+
+.DS_Store
+
+# 불필요한 것들 제외
+README.md
+Desktop/
+node_modules/
+.env
+# 시스템 파일
+.DS_Store
+.localized
+
+# 에디터 관련
+.vscode/
+.idea/
+
+# 의존성
+node_modules/
+npm-debug.log*
+
+# 환경 변수
+.env
+
+# 절대 올라가면 안 되는 개인 경로들
+../../*
+../*

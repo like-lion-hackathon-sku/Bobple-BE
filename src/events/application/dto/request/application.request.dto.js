@@ -1,0 +1,1 @@
+export const parseApply = (params)=>({ eventId: BigInt(params.eventId) });

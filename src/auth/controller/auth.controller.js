@@ -43,7 +43,7 @@ export const handleLogin = async (req, res, next) => {
   setTokenCookies(res, login.tokens.access, login.tokens.refresh);
   res.status(StatusCodes.OK).success({
     user: login.user,
-    accessToken: result.accessToken,
+    accessToken: login.accessToken,
   });
 };
 export const handleLogout = async (req, res, next) => {

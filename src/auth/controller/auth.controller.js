@@ -41,7 +41,10 @@ export const handleLogin = async (req, res, next) => {
   }
   const login = await verifyIdToken(loginRequestDto(req.body));
   setTokenCookies(res, login.tokens.access, login.tokens.refresh);
-  res.status(StatusCodes.OK).success(login.user);
+  res.status(StatusCodes.OK).success({
+    user: results.user,
+    accessToken: result.accessToken,
+  });
 };
 export const handleLogout = async (req, res, next) => {
   /*
@@ -59,7 +62,10 @@ export const handleRefresh = async (req, res, next) => {
   */
   const results = await refresh(refreshRequestDto(req.cookies));
   setTokenCookies(res, results.accessToken, null);
-  res.status(StatusCodes.OK).success(results.user);
+  res.status(StatusCodes.OK).success({
+    user: results.user,
+    accessToken: results.accessToken,
+  });
 };
 export const handleUpdateProfile = async (req, res, next) => {
   /*

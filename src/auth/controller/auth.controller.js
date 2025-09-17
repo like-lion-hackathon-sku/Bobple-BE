@@ -42,7 +42,7 @@ export const handleLogin = async (req, res, next) => {
   const login = await verifyIdToken(loginRequestDto(req.body));
   setTokenCookies(res, login.tokens.access, login.tokens.refresh);
   res.status(StatusCodes.OK).success({
-    user: results.user,
+    user: login.user,
     accessToken: result.accessToken,
   });
 };
